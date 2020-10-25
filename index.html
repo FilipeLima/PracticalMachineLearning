@@ -383,6 +383,206 @@ WLEdataframe$classe &lt;- as.factor(WLEdataframe$classe)
 Selection1 &lt;- c(8:10,37:48,60:68,84:86,113:124,151:160)
 WLEdataframe &lt;- WLEdataframe[,Selection1]</code></pre>
 </div>
+<div id="splitting-and-training" class="section level2">
+<h2>Splitting and training</h2>
+<p>We split the dataset using 70% for training. We use cross validation as a method of train control and 10 as the number of resampling iterations. Then, we trained the data using the Random Forest algorithm.</p>
+<pre class="r"><code>inTraining &lt;- createDataPartition(y=WLEdataframe$classe, p = .70, list=FALSE)
+training &lt;- WLEdataframe[inTraining,]
+testing &lt;- WLEdataframe[-inTraining,]
+fitControl &lt;- trainControl(method = &quot;cv&quot;,number = 10)
+modRF &lt;- train(training[,-49],training[,49],data=training,method=&quot;rf&quot;,
+               trControl = fitControl)
+modRF</code></pre>
+<p>We got the following results:</p>
+<p>Random Forest</p>
+<p>13737 samples 48 predictor 5 classes: ‘A’, ‘B’, ‘C’, ‘D’, ‘E’</p>
+<p>No pre-processing Resampling: Cross-Validated (10 fold) Summary of sample sizes: 12363, 12362, 12364, 12363, 12364, 12365, … Resampling results across tuning parameters:</p>
+<table>
+<thead>
+<tr class="header">
+<th>mtry</th>
+<th>Accuracy</th>
+<th>Kappa</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2</td>
+<td>0.9918467</td>
+<td>0.9896856</td>
+</tr>
+<tr class="even">
+<td>25</td>
+<td>0.9916290</td>
+<td>0.9894103</td>
+</tr>
+<tr class="odd">
+<td>48</td>
+<td>0.9861689</td>
+<td>0.9825029</td>
+</tr>
+</tbody>
+</table>
+<p>Accuracy was used to select the optimal model using the largest value. The final value used for the model was mtry = 2.</p>
+</div>
+<div id="testing-and-results" class="section level2">
+<h2>Testing and Results</h2>
+<p>Now, we will test the model in the testing data and look at the confusion matrix.</p>
+<pre class="r"><code>predictions &lt;- predict(modRF, newdata=testing)
+confusionMatrix(predictions, testing$classe)</code></pre>
+<p>Confusion Matrix and Statistics</p>
+<table>
+<thead>
+<tr class="header">
+<th>Prediction</th>
+<th>A</th>
+<th>B</th>
+<th>C</th>
+<th>D</th>
+<th>E</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td>1672</td>
+<td>13</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td>2 1123</td>
+<td>1123</td>
+<td>9</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td>0</td>
+<td>3</td>
+<td>1016</td>
+<td>23</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>D</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>941</td>
+<td>4</td>
+</tr>
+<tr class="odd">
+<td>E</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>1077</td>
+</tr>
+</tbody>
+</table>
+<p>Overall Statistics</p>
+<pre><code>           Accuracy : 0.9905          
+             95% CI : (0.9877, 0.9928)
+No Information Rate : 0.2845          
+P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+                                      
+              Kappa : 0.988           
+                                      </code></pre>
+<p>Mcnemar’s Test P-Value : NA</p>
+<p>Statistics by Class:</p>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Class A</th>
+<th>Class B</th>
+<th>Class C</th>
+<th>Class D</th>
+<th>Class E</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sensitivity</td>
+<td>0.9988</td>
+<td>0.9860</td>
+<td>0.9903</td>
+<td>0.9761</td>
+<td>0.9954</td>
+</tr>
+<tr class="even">
+<td>Specificity</td>
+<td>0.9969</td>
+<td>0.9977</td>
+<td>0.9944</td>
+<td>0.9990</td>
+<td>1.0000</td>
+</tr>
+<tr class="odd">
+<td>Pos Pred Value</td>
+<td>0.9923</td>
+<td>0.9903</td>
+<td>0.9741</td>
+<td>0.9947</td>
+<td>1.0000</td>
+</tr>
+<tr class="even">
+<td>Neg Pred Value</td>
+<td>0.9995</td>
+<td>0.9966</td>
+<td>0.9979</td>
+<td>0.9953</td>
+<td>0.9990</td>
+</tr>
+<tr class="odd">
+<td>Prevalence</td>
+<td>0.2845</td>
+<td>0.1935</td>
+<td>0.1743</td>
+<td>0.1638</td>
+<td>0.1839</td>
+</tr>
+<tr class="even">
+<td>Detection Rate</td>
+<td>0.2841</td>
+<td>0.1908</td>
+<td>0.1726</td>
+<td>0.1599</td>
+<td>0.1830</td>
+</tr>
+<tr class="odd">
+<td>Detection Prevalence</td>
+<td>0.2863</td>
+<td>0.1927</td>
+<td>0.1772</td>
+<td>0.1607</td>
+<td>0.1830</td>
+</tr>
+<tr class="even">
+<td>Balanced Accuracy</td>
+<td>0.9979</td>
+<td>0.9918</td>
+<td>0.9923</td>
+<td>0.9876</td>
+<td>0.997</td>
+</tr>
+</tbody>
+</table>
+<p>We achieved a 99.05% accuracy in this model.</p>
+</div>
+<div id="the-course-project-prediction-quiz" class="section level2">
+<h2>The Course Project Prediction Quiz</h2>
+<p>Now, we will use our model to predict the classes for this <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv">Testing Dataset</a>, with 20 observations.</p>
+<pre class="r"><code>predictDATAFRAME &lt;- read.csv(&quot;pml-testing.csv&quot;)
+predict(modRF, newdata=predictDATAFRAME)</code></pre>
+<p>B A B A A E D B A A B C B A E E A B B B Levels: A B C D E</p>
+<p>This result is 100% correct.</p>
+</div>
 
 
 
