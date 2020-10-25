@@ -1,0 +1,29 @@
+---
+title: "Qualitative analysis of weight lifting exercises"
+author: "Filipe Lima"
+date: "24/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as *Jawbone Up*, *Nike FuelBand*, and *Fitbit* it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [HAR Project](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+
+## Data cleaning
+
+First we will find the most relevant variables in the [Training data](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) for the project. We chose the ones that have the results for roll, yaw, pitch, gyros, accel and magnet for belt, forearm, arm and dumbell, and of course, the classe variable. Then we will create a new dataset using those variables and classe as a factor.
+
+```{r, eval=FALSE}
+library(caret)
+WLEdataframe <- read.csv("pml-training.csv")
+WLEdataframe$classe <- as.factor(WLEdataframe$classe)
+#The index of the variables we want
+Selection1 <- c(8:10,37:48,60:68,84:86,113:124,151:160)
+WLEdataframe <- WLEdataframe[,Selection1]
+```
+
