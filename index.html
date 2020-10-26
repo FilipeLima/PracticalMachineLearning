@@ -375,213 +375,125 @@ summary {
 </div>
 <div id="data-cleaning" class="section level2">
 <h2>Data cleaning</h2>
-<p>First we will find the most relevant variables in the <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">Training data</a> for the project. We chose the ones that have the results for roll, yaw, pitch, gyros, accel and magnet for belt, forearm, arm and dumbell, and of course, the classe variable. Then we will create a new dataset using those variables and classe as a factor.</p>
-<pre class="r"><code>library(caret)
-WLEdataframe &lt;- read.csv(&quot;pml-training.csv&quot;)
+<p>First we will find the most relevant variables in the <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">Training data</a> for the project. We chose the ones that have the results for roll, yaw, pitch, gyros, accel and magnet for belt, forearm, arm and dumbell, and of course, the classe variable. We based our choice using the description of the variables in this <a href="http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf">article</a> by Velloso <em>et al</em>. Then we will create a new dataset using those variables and classe as a factor.</p>
+<pre class="r"><code>library(caret)</code></pre>
+<pre><code>## Loading required package: lattice</code></pre>
+<pre><code>## Loading required package: ggplot2</code></pre>
+<pre class="r"><code>library(parallel) 
+library(doParallel) #For parallel computing</code></pre>
+<pre><code>## Loading required package: foreach</code></pre>
+<pre><code>## Loading required package: iterators</code></pre>
+<pre class="r"><code>WLEdataframe &lt;- read.csv(&quot;pml-training.csv&quot;)
 WLEdataframe$classe &lt;- as.factor(WLEdataframe$classe)
 #The index of the variables we want
 Selection1 &lt;- c(8:10,37:48,60:68,84:86,113:124,151:160)
 WLEdataframe &lt;- WLEdataframe[,Selection1]</code></pre>
+<p>The variables in this new dataframe are:</p>
+<pre class="r"><code>names(WLEdataframe)</code></pre>
+<pre><code>##  [1] &quot;roll_belt&quot;         &quot;pitch_belt&quot;        &quot;yaw_belt&quot;         
+##  [4] &quot;gyros_belt_x&quot;      &quot;gyros_belt_y&quot;      &quot;gyros_belt_z&quot;     
+##  [7] &quot;accel_belt_x&quot;      &quot;accel_belt_y&quot;      &quot;accel_belt_z&quot;     
+## [10] &quot;magnet_belt_x&quot;     &quot;magnet_belt_y&quot;     &quot;magnet_belt_z&quot;    
+## [13] &quot;roll_arm&quot;          &quot;pitch_arm&quot;         &quot;yaw_arm&quot;          
+## [16] &quot;gyros_arm_x&quot;       &quot;gyros_arm_y&quot;       &quot;gyros_arm_z&quot;      
+## [19] &quot;accel_arm_x&quot;       &quot;accel_arm_y&quot;       &quot;accel_arm_z&quot;      
+## [22] &quot;magnet_arm_x&quot;      &quot;magnet_arm_y&quot;      &quot;magnet_arm_z&quot;     
+## [25] &quot;roll_dumbbell&quot;     &quot;pitch_dumbbell&quot;    &quot;yaw_dumbbell&quot;     
+## [28] &quot;gyros_dumbbell_x&quot;  &quot;gyros_dumbbell_y&quot;  &quot;gyros_dumbbell_z&quot; 
+## [31] &quot;accel_dumbbell_x&quot;  &quot;accel_dumbbell_y&quot;  &quot;accel_dumbbell_z&quot; 
+## [34] &quot;magnet_dumbbell_x&quot; &quot;magnet_dumbbell_y&quot; &quot;magnet_dumbbell_z&quot;
+## [37] &quot;roll_forearm&quot;      &quot;pitch_forearm&quot;     &quot;yaw_forearm&quot;      
+## [40] &quot;gyros_forearm_x&quot;   &quot;gyros_forearm_y&quot;   &quot;gyros_forearm_z&quot;  
+## [43] &quot;accel_forearm_x&quot;   &quot;accel_forearm_y&quot;   &quot;accel_forearm_z&quot;  
+## [46] &quot;magnet_forearm_x&quot;  &quot;magnet_forearm_y&quot;  &quot;magnet_forearm_z&quot; 
+## [49] &quot;classe&quot;</code></pre>
+<p>With this line of code we can confirm that there are no NA values in this new dataset.</p>
+<pre class="r"><code>sum(is.na(WLEdataframe))</code></pre>
+<pre><code>## [1] 0</code></pre>
 </div>
 <div id="splitting-and-training" class="section level2">
 <h2>Splitting and training</h2>
-<p>We split the dataset using 70% for training. We use cross validation as a method of train control and 10 as the number of resampling iterations. Then, we trained the data using the Random Forest algorithm.</p>
-<pre class="r"><code>inTraining &lt;- createDataPartition(y=WLEdataframe$classe, p = .70, list=FALSE)
+<p>We split the dataset using 75% for training. We use cross validation as a method of train control and a 10-fold cross validation. Then, we trained the data using the Random Forest algorithm. But first, we are going to create a cluster to optimize our computing time.</p>
+<pre class="r"><code>cluster &lt;- makeCluster(detectCores() - 1) #Getting all the cores but one
+registerDoParallel(cluster) #Registering clusters</code></pre>
+<p>Now, training the model with the above parameters, we have:</p>
+<pre class="r"><code>set.seed(20201025)
+inTraining &lt;- createDataPartition(y=WLEdataframe$classe, p = .75, list=FALSE)
 training &lt;- WLEdataframe[inTraining,]
 testing &lt;- WLEdataframe[-inTraining,]
 fitControl &lt;- trainControl(method = &quot;cv&quot;,number = 10)
 modRF &lt;- train(training[,-49],training[,49],data=training,method=&quot;rf&quot;,
                trControl = fitControl)
 modRF</code></pre>
-<p>We got the following results:</p>
-<p>Random Forest</p>
-<p>13737 samples 48 predictor 5 classes: ‘A’, ‘B’, ‘C’, ‘D’, ‘E’</p>
-<p>No pre-processing Resampling: Cross-Validated (10 fold) Summary of sample sizes: 12363, 12362, 12364, 12363, 12364, 12365, … Resampling results across tuning parameters:</p>
-<table>
-<thead>
-<tr class="header">
-<th>mtry</th>
-<th>Accuracy</th>
-<th>Kappa</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>2</td>
-<td>0.9918467</td>
-<td>0.9896856</td>
-</tr>
-<tr class="even">
-<td>25</td>
-<td>0.9916290</td>
-<td>0.9894103</td>
-</tr>
-<tr class="odd">
-<td>48</td>
-<td>0.9861689</td>
-<td>0.9825029</td>
-</tr>
-</tbody>
-</table>
-<p>Accuracy was used to select the optimal model using the largest value. The final value used for the model was mtry = 2.</p>
+<pre><code>## Random Forest 
+## 
+## 14718 samples
+##    48 predictor
+##     5 classes: &#39;A&#39;, &#39;B&#39;, &#39;C&#39;, &#39;D&#39;, &#39;E&#39; 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (10 fold) 
+## Summary of sample sizes: 13245, 13247, 13247, 13246, 13246, 13245, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9934096  0.9916626
+##   25    0.9936817  0.9920072
+##   48    0.9875667  0.9842707
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 25.</code></pre>
+<p>The next chunk of code is used to close the cluster.</p>
+<pre class="r"><code>stopCluster(cluster)
+registerDoSEQ()</code></pre>
 </div>
 <div id="testing-and-results" class="section level2">
 <h2>Testing and Results</h2>
 <p>Now, we will test the model in the testing data and look at the confusion matrix.</p>
 <pre class="r"><code>predictions &lt;- predict(modRF, newdata=testing)
 confusionMatrix(predictions, testing$classe)</code></pre>
-<p>Confusion Matrix and Statistics</p>
-<table>
-<thead>
-<tr class="header">
-<th>Prediction</th>
-<th>A</th>
-<th>B</th>
-<th>C</th>
-<th>D</th>
-<th>E</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>A</td>
-<td>1672</td>
-<td>13</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-</tr>
-<tr class="even">
-<td>B</td>
-<td>2 1123</td>
-<td>1123</td>
-<td>9</td>
-<td>0</td>
-<td>0</td>
-</tr>
-<tr class="odd">
-<td>C</td>
-<td>0</td>
-<td>3</td>
-<td>1016</td>
-<td>23</td>
-<td>1</td>
-</tr>
-<tr class="even">
-<td>D</td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>941</td>
-<td>4</td>
-</tr>
-<tr class="odd">
-<td>E</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>1077</td>
-</tr>
-</tbody>
-</table>
-<p>Overall Statistics</p>
-<pre><code>           Accuracy : 0.9905          
-             95% CI : (0.9877, 0.9928)
-No Information Rate : 0.2845          
-P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-                                      
-              Kappa : 0.988           
-                                      </code></pre>
-<p>Mcnemar’s Test P-Value : NA</p>
-<p>Statistics by Class:</p>
-<table>
-<thead>
-<tr class="header">
-<th></th>
-<th>Class A</th>
-<th>Class B</th>
-<th>Class C</th>
-<th>Class D</th>
-<th>Class E</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Sensitivity</td>
-<td>0.9988</td>
-<td>0.9860</td>
-<td>0.9903</td>
-<td>0.9761</td>
-<td>0.9954</td>
-</tr>
-<tr class="even">
-<td>Specificity</td>
-<td>0.9969</td>
-<td>0.9977</td>
-<td>0.9944</td>
-<td>0.9990</td>
-<td>1.0000</td>
-</tr>
-<tr class="odd">
-<td>Pos Pred Value</td>
-<td>0.9923</td>
-<td>0.9903</td>
-<td>0.9741</td>
-<td>0.9947</td>
-<td>1.0000</td>
-</tr>
-<tr class="even">
-<td>Neg Pred Value</td>
-<td>0.9995</td>
-<td>0.9966</td>
-<td>0.9979</td>
-<td>0.9953</td>
-<td>0.9990</td>
-</tr>
-<tr class="odd">
-<td>Prevalence</td>
-<td>0.2845</td>
-<td>0.1935</td>
-<td>0.1743</td>
-<td>0.1638</td>
-<td>0.1839</td>
-</tr>
-<tr class="even">
-<td>Detection Rate</td>
-<td>0.2841</td>
-<td>0.1908</td>
-<td>0.1726</td>
-<td>0.1599</td>
-<td>0.1830</td>
-</tr>
-<tr class="odd">
-<td>Detection Prevalence</td>
-<td>0.2863</td>
-<td>0.1927</td>
-<td>0.1772</td>
-<td>0.1607</td>
-<td>0.1830</td>
-</tr>
-<tr class="even">
-<td>Balanced Accuracy</td>
-<td>0.9979</td>
-<td>0.9918</td>
-<td>0.9923</td>
-<td>0.9876</td>
-<td>0.997</td>
-</tr>
-</tbody>
-</table>
-<p>We achieved a 99.05% accuracy in this model.</p>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1394    5    0    0    0
+##          B    0  943    2    0    0
+##          C    1    1  851    4    0
+##          D    0    0    2  800    3
+##          E    0    0    0    0  898
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9963          
+##                  95% CI : (0.9942, 0.9978)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9954          
+##                                           
+##  Mcnemar&#39;s Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9993   0.9937   0.9953   0.9950   0.9967
+## Specificity            0.9986   0.9995   0.9985   0.9988   1.0000
+## Pos Pred Value         0.9964   0.9979   0.9930   0.9938   1.0000
+## Neg Pred Value         0.9997   0.9985   0.9990   0.9990   0.9993
+## Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
+## Detection Rate         0.2843   0.1923   0.1735   0.1631   0.1831
+## Detection Prevalence   0.2853   0.1927   0.1748   0.1642   0.1831
+## Balanced Accuracy      0.9989   0.9966   0.9969   0.9969   0.9983</code></pre>
+<p>As the accuracy is 99.63%, the Out-of-the-sample error is 1 minus the accuracy, which is 0.37%.</p>
 </div>
 <div id="the-course-project-prediction-quiz" class="section level2">
 <h2>The Course Project Prediction Quiz</h2>
 <p>Now, we will use our model to predict the classes for this <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv">Testing Dataset</a>, with 20 observations.</p>
 <pre class="r"><code>predictDATAFRAME &lt;- read.csv(&quot;pml-testing.csv&quot;)
 predict(modRF, newdata=predictDATAFRAME)</code></pre>
-<p>B A B A A E D B A A B C B A E E A B B B Levels: A B C D E</p>
-<p>This result is 100% correct.</p>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<p>Checking this result in the quiz, we got 100% of the problems correct.</p>
 </div>
 
 

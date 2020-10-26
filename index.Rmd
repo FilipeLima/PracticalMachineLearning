@@ -2,12 +2,8 @@
 title: "Qualitative analysis of weight lifting exercises"
 author: "Filipe Lima"
 date: "24/10/2020"
-output: html_document
+output: md_document
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ## Background
 
@@ -16,10 +12,12 @@ Using devices such as *Jawbone Up*, *Nike FuelBand*, and *Fitbit* it is now poss
 
 ## Data cleaning
 
-First we will find the most relevant variables in the [Training data](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) for the project. We chose the ones that have the results for roll, yaw, pitch, gyros, accel and magnet for belt, forearm, arm and dumbell, and of course, the classe variable. Then we will create a new dataset using those variables and classe as a factor.
+First we will find the most relevant variables in the [Training data](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) for the project. We chose the ones that have the results for roll, yaw, pitch, gyros, accel and magnet for belt, forearm, arm and dumbell, and of course, the classe variable. We based our choice using the description of the variables in this [article](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf) by Velloso *et al*. Then we will create a new dataset using those variables and classe as a factor.
 
-```{r, eval=FALSE}
+```{r, warning=FALSE}
 library(caret)
+library(parallel) 
+library(doParallel) #For parallel computing
 WLEdataframe <- read.csv("pml-training.csv")
 WLEdataframe$classe <- as.factor(WLEdataframe$classe)
 #The index of the variables we want
@@ -27,12 +25,35 @@ Selection1 <- c(8:10,37:48,60:68,84:86,113:124,151:160)
 WLEdataframe <- WLEdataframe[,Selection1]
 ```
 
+The variables in this new dataframe are:
+
+```{r}
+names(WLEdataframe)
+```
+
+With this line of code we can confirm that there are no NA values in this new dataset.
+
+```{r}
+sum(is.na(WLEdataframe))
+```
+
+
+
 ## Splitting and training
 
-We split the dataset using 70% for training. We use cross validation as a method of train control and 10 as the number of resampling iterations. Then, we trained the data using the Random Forest algorithm.
+We split the dataset using 75% for training. We use cross validation as a method of train control and a 10-fold cross validation. Then, we trained the data using the Random Forest algorithm. But first, we are going to create a cluster to optimize our computing time.
 
-```{r, eval=FALSE}
-inTraining <- createDataPartition(y=WLEdataframe$classe, p = .70, list=FALSE)
+```{r}
+cluster <- makeCluster(detectCores() - 1) #Getting all the cores but one
+registerDoParallel(cluster) #Registering clusters
+```
+
+Now, training the model with the above parameters, we have:
+
+
+```{r modeltraining, cache=TRUE}
+set.seed(20201025)
+inTraining <- createDataPartition(y=WLEdataframe$classe, p = .75, list=FALSE)
 training <- WLEdataframe[inTraining,]
 testing <- WLEdataframe[-inTraining,]
 fitControl <- trainControl(method = "cv",number = 10)
@@ -40,85 +61,33 @@ modRF <- train(training[,-49],training[,49],data=training,method="rf",
                trControl = fitControl)
 modRF
 ```
+The next chunk of code is used to close the cluster.
 
+```{r}
+stopCluster(cluster)
+registerDoSEQ()
+```
 
-We got the following results:
-
-Random Forest 
-
-13737 samples
-   48 predictor
-    5 classes: 'A', 'B', 'C', 'D', 'E' 
-
-No pre-processing
-Resampling: Cross-Validated (10 fold) 
-Summary of sample sizes: 12363, 12362, 12364, 12363, 12364, 12365, ... 
-Resampling results across tuning parameters:
-
-| mtry | Accuracy  | Kappa     |
-|------|-----------|-----------|
-| 2    | 0.9918467 | 0.9896856 |
-| 25   | 0.9916290 | 0.9894103 |
-| 48   | 0.9861689 | 0.9825029 |
-
-Accuracy was used to select the optimal model using the largest value.
-The final value used for the model was mtry = 2.
 
 ## Testing and Results
 
 Now, we will test the model in the testing data and look at the confusion matrix.
 
-```{r,eval=FALSE}
+```{r}
 predictions <- predict(modRF, newdata=testing)
 confusionMatrix(predictions, testing$classe)
 ```
 
-Confusion Matrix and Statistics
-
-| Prediction | A      | B    | C    | D   | E    |
-|------------|--------|------|------|-----|------|
-| A          | 1672   | 13   | 0    | 0   | 0    |
-| B          | 2 1123 | 1123 | 9    | 0   | 0    |
-| C          | 0      | 3    | 1016 | 23  | 1    |
-| D          | 0      | 0    | 1    | 941 | 4    |
-| E          | 0      | 0    | 0    | 0   | 1077 |
-
-Overall Statistics
-                                          
-               Accuracy : 0.9905          
-                 95% CI : (0.9877, 0.9928)
-    No Information Rate : 0.2845          
-    P-Value [Acc > NIR] : < 2.2e-16       
-                                          
-                  Kappa : 0.988           
-                                          
-Mcnemar's Test P-Value : NA              
-
-Statistics by Class:
-
-|                      | Class A | Class B | Class C | Class D | Class E |
-|----------------------|---------|---------|---------|---------|---------|
-| Sensitivity          | 0.9988  | 0.9860  | 0.9903  | 0.9761  | 0.9954  |
-| Specificity          | 0.9969  | 0.9977  | 0.9944  | 0.9990  | 1.0000  |
-| Pos Pred Value       | 0.9923  | 0.9903  | 0.9741  | 0.9947  | 1.0000  |
-| Neg Pred Value       | 0.9995  | 0.9966  | 0.9979  | 0.9953  | 0.9990  |
-| Prevalence           | 0.2845  | 0.1935  | 0.1743  | 0.1638  | 0.1839  |
-| Detection Rate       | 0.2841  | 0.1908  | 0.1726  | 0.1599  | 0.1830  |
-| Detection Prevalence | 0.2863  | 0.1927  | 0.1772  | 0.1607  | 0.1830  |
-| Balanced Accuracy    | 0.9979  | 0.9918  | 0.9923  | 0.9876  | 0.997   |
-
-We achieved a 99.05% accuracy in this model. 
+As the accuracy is 99.63%, the Out-of-the-sample error is 1 minus the accuracy, which is 0.37%.
 
 ## The Course Project Prediction Quiz
 
 Now, we will use our model to predict the classes for this [Testing Dataset](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv), with 20 observations.
 
-```{r,eval=FALSE}
+```{r}
 predictDATAFRAME <- read.csv("pml-testing.csv")
 predict(modRF, newdata=predictDATAFRAME)
 ```
 
-B A B A A E D B A A B C B A E E A B B B
-Levels: A B C D E
 
-This result is 100% correct.
+Checking this result in the quiz, we got 100% of the problems correct.
